@@ -4,7 +4,7 @@ import { z } from "zod";
 // Product Schema
 // ============================================
 export const ProductSchema = z.object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     code: z.string(),
     description: z.string(),
     provider: z.string(),
@@ -23,8 +23,8 @@ export type ProductUpdate = Partial<Omit<Product, "id">> & { id: string };
 // Purchased Product Schema (productos_comprados)
 // ============================================
 export const PurchasedProductSchema = z.object({
-    id: z.string().uuid(),
-    productId: z.string().uuid(),
+    id: z.uuid(),
+    productId: z.uuid(),
     productCode: z.string(),
     productDescription: z.string(),
     productProvider: z.string(),
@@ -41,8 +41,8 @@ export type PurchasedProductUpdate = Partial<Omit<PurchasedProduct, "id">> & { i
 // Sold Product Schema (productos_vendidos)
 // ============================================
 export const SoldProductSchema = z.object({
-    id: z.string().uuid(),
-    productId: z.string().uuid(),
+    id: z.uuid(),
+    productId: z.uuid(),
     productCode: z.string(),
     productDescription: z.string(),
     productProvider: z.string(),
