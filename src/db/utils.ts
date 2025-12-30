@@ -40,12 +40,13 @@ export function safeParseRow<T extends z.ZodTypeAny>(
 }
 
 /**
- * Parses a date string in format "DD/MM/YYYY" or "DD/MM/YYYY HH:mm" to Date object
+ * Parses a date string in format "DD/MM/YYYY" or "DD/MM/YYYY HH:mm:ss" to Date object.
+ * Time part (HH:mm:ss) is optional.
  */
 export function parseDateString(dateString: string): Date {
     const parts = dateString.split(" ");
     const datePart = parts[0] || "";
-    const timePart = parts[1] || "00:00";
+    const timePart = parts[1] || "00:00:00";
 
     const dateParts = datePart.split("/").map(Number);
     const day = dateParts[0] || 1;
@@ -55,6 +56,27 @@ export function parseDateString(dateString: string): Date {
     const timeParts = timePart.split(":").map(Number);
     const hours = timeParts[0] || 0;
     const minutes = timeParts[1] || 0;
+    const seconds = timeParts[2] || 0;
 
-    return new Date(year, month - 1, day, hours, minutes);
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+}
+
+/**
+ * Parses an ISO date string (e.g., "2024-12-30T14:30:00.000Z") to Date object.
+ * Used for returnedAt field in productos_vendidos.
+ */
+export function parseISODateString(dateString: string): Date {
+    return new Date(dateString);
+}
+
+/**
+ * Parses a date string that could be either ISO format or DD/MM/YYYY format.
+ * Automatically detects the format.
+ */
+export function parseAnyDateString(dateString: string): Date {
+    // ISO format contains "-" and "T" or starts with 4 digits (year)
+    if (dateString.includes("-") || /^\d{4}/.test(dateString)) {
+        return parseISODateString(dateString);
+    }
+    return parseDateString(dateString);
 }
