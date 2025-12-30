@@ -9,3 +9,6 @@ export * from "./sales";
 
 // Re-export all config queries
 export * from "./config";
+
+// Re-export all user queries
+export * from "./users";

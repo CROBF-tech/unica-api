@@ -9,3 +9,4 @@ export * from "./queries/products";
 export * from "./queries/purchases";
 export * from "./queries/sales";
 export * from "./queries/config";
+export * from "./queries/users";

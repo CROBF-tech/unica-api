@@ -76,6 +76,20 @@ export type ConfigInsert = Omit<Config, "id">;
 export type ConfigUpdate = Config;
 
 // ============================================
+// User Schema
+// ============================================
+export const UserSchema = z.object({
+    id: z.coerce.number().nonnegative().int(),
+    username: z.string(),
+    password: z.string(),
+    role: z.string(),
+});
+
+export type User = z.infer<typeof UserSchema>;
+export type UserInsert = Omit<User, "id">;
+export type UserUpdate = Partial<Omit<User, "id">> & { id: number };
+
+// ============================================
 // Pagination Types
 // ============================================
 export interface PaginationOptions {

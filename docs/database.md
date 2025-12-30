@@ -17,9 +17,10 @@ Esta base de datos soporta una aplicación de gestión de inventario y ventas pa
 ## Diagrama de Relaciones
 
 ```
-┌─────────────────┐
-│     config      │  (Configuración y credenciales)
-└─────────────────┘
+┌─────────────────┐     ┌─────────────────┐
+│     config      │     │     users       │
+│ (Configuración) │     │   (Usuarios)    │
+└─────────────────┘     └─────────────────┘
 
 ┌─────────────────┐       ┌──────────────────────┐
 │    products     │◄──────│  productos_comprados │
@@ -159,7 +160,7 @@ Registra cada venta realizada al público. Similar a las compras, los datos del 
 
 ### 4. `config` - Configuración del Sistema
 
-Almacena pares clave-valor para la configuración de la aplicación, incluyendo credenciales de acceso.
+Almacena pares clave-valor para la configuración de la aplicación.
 
 | Columna | Tipo    | Requerido | PK  | Descripción                   |
 | ------- | ------- | --------- | --- | ----------------------------- |
@@ -167,17 +168,44 @@ Almacena pares clave-valor para la configuración de la aplicación, incluyendo 
 | `key`   | TEXT    | ✅        | -   | Nombre de la configuración    |
 | `value` | TEXT    | ✅        | -   | Valor de la configuración     |
 
-#### Uso principal
+#### Ejemplo de registros
 
-Esta tabla se utiliza para almacenar las credenciales de los usuarios autorizados. La aplicación no está disponible al público general, por lo que los usuarios son fijos y no se contempla registro de nuevos usuarios.
+```json
+[
+  { "id": 1, "key": "store_name", "value": "Única Indumentaria" },
+  { "id": 2, "key": "store_address", "value": "Av. Principal 123" }
+]
+```
+
+---
+
+### 5. `users` - Usuarios del Sistema
+
+Almacena los usuarios autorizados para acceder al sistema. La aplicación no está disponible al público general, por lo que los usuarios son gestionados internamente.
+
+| Columna    | Tipo    | Requerido | PK  | Descripción                             |
+| ---------- | ------- | --------- | --- | --------------------------------------- |
+| `id`       | INTEGER | No        | ✅  | Identificador autoincremental           |
+| `username` | TEXT    | ✅        | -   | Nombre de usuario único                 |
+| `password` | TEXT    | ✅        | -   | Contraseña hasheada (bcrypt)            |
+| `role`     | TEXT    | ✅        | -   | Rol del usuario (ej: "admin", "seller") |
+
+#### Roles disponibles
+
+- **`admin`**: Acceso completo al sistema (gestión de productos, usuarios, reportes)
+- **`seller`**: Acceso limitado a ventas y consulta de productos
 
 #### Ejemplo de registros
 
 ```json
 [
-  { "id": 1, "key": "admin_username", "value": "admin" },
-  { "id": 2, "key": "admin_password_hash", "value": "$2b$10$..." },
-  { "id": 3, "key": "store_name", "value": "Única Indumentaria" }
+  { "id": 1, "username": "admin", "password": "$2b$10$...", "role": "admin" },
+  {
+    "id": 2,
+    "username": "vendedor1",
+    "password": "$2b$10$...",
+    "role": "seller"
+  }
 ]
 ```
 
