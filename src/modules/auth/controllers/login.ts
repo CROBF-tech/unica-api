@@ -2,6 +2,7 @@ import { env } from "@/config/env";
 import { makeController } from "@/shared/utils/makeController";
 import { Login } from "@/modules/auth/actions/Login";
 import { z } from "zod";
+import http_status from "http-status";
 import jwt from "jsonwebtoken";
 
 const body = z.object({
@@ -17,7 +18,7 @@ export const login = makeController<typeof body>(async function ({ body, request
 
     const token = jwt.sign({ ...user }, env.JWT_SECRET, { expiresIn: "2DAYS" });
 
-    res.status(200).json({
+    res.status(http_status.OK).json({
         status: "success",
         messages: "Credenciales correctas.",
         token,

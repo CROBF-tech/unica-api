@@ -4,6 +4,7 @@ import { fromError } from "zod-validation-error";
 import { ErrorResponse } from "@/shared/errors/ErrorResponse";
 import { InvalidCredentials } from "@/modules/auth/errors/InvalidCredentials";
 import { JsonWebTokenError } from "jsonwebtoken";
+import http_status from "http-status";
 
 // Esta función se usa en casi todos los controladores 👇
 
@@ -42,7 +43,7 @@ export function makeController<Body extends ZodType | undefined = undefined, Par
 
                 const info = fromError(error).details[0]!;
 
-                res.status(400).json({
+                res.status(http_status.BAD_REQUEST).json({
                     message: info.message,
                     path: info.path[0]
                 })
