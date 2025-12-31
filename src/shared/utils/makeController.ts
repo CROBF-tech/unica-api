@@ -1,18 +1,17 @@
 import type { Request, Response, NextFunction, Handler } from "express";
 import { type ZodType, ZodError, type output } from "zod";
 import { fromError } from "zod-validation-error";
+import { ErrorResponse } from "@/shared/errors/ErrorResponse";
 
-export function makeController<Body extends ZodType, Params extends ZodType>(controller: (req: { body: output<Body> | undefined, params?: output<Params> | undefined, request: Request }, res: Response) => void, bodySchema?: Body, paramsSchema?: Params): Handler {
+export function makeController<Body extends ZodType, Params extends ZodType>(controller: (req: { body: output<Body> | undefined, params?: output<Params> | undefined, request: Request }, res: Response) => Promise<void>, bodySchema?: Body, paramsSchema?: Params): Handler {
 
-    return (req: Request, res: Response, next: NextFunction): void => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
         try {
             const body = bodySchema?.parse(req.body);
             const params = paramsSchema?.parse(req.params);
 
-            controller({ body, params, request: req }, res);
-
-            return;
+            await controller({ body, params, request: req }, res);
         } catch (error) {
 
             if (error instanceof ZodError) {
@@ -25,6 +24,14 @@ export function makeController<Body extends ZodType, Params extends ZodType>(con
                 })
 
                 return;
+            }
+
+            if (error instanceof ErrorResponse) {
+
+                res.status(error.code).json({
+                    message: error.message
+                });
+
             }
 
             next(error);

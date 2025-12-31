@@ -1,4 +1,5 @@
 import { makeController } from "@/shared/utils/makeController";
+import { Login } from "@/modules/auth/actions/Login";
 import { z } from "zod";
 
 const body = z.object({
@@ -9,8 +10,12 @@ const body = z.object({
 const params = z.object({}).optional();
 
 
-export const login = makeController<typeof body, typeof params>(function ({ body }, res) {
+export const login = makeController<typeof body, typeof params>(async function ({ body }, res) {
 
-    res.json(body);
+    const { username, password } = body!;
+
+    const user = await Login({ username, password });
+
+    res.json(user);
 
 }, body, params);
