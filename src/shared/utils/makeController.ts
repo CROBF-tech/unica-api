@@ -3,13 +3,23 @@ import { type ZodType, ZodError, type output } from "zod";
 import { fromError } from "zod-validation-error";
 import { ErrorResponse } from "@/shared/errors/ErrorResponse";
 
-export function makeController<Body extends ZodType, Params extends ZodType>(controller: (req: { body: output<Body> | undefined, params?: output<Params> | undefined, request: Request }, res: Response) => Promise<void>, bodySchema?: Body, paramsSchema?: Params): Handler {
+// Esta función se usa en casi todos los controladores 👇
+
+export function makeController<Body extends ZodType | undefined = undefined, Params extends ZodType | undefined = undefined>(
+    controller: (
+        req: {
+            body: Body extends ZodType ? output<Body> : undefined,
+            params?: Params extends ZodType ? output<Params> : undefined,
+            request: Request
+        },
+        res: Response
+    ) => Promise<void>, bodySchema?: Body, paramsSchema?: Params): Handler {
 
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
         try {
-            const body = bodySchema?.parse(req.body);
-            const params = paramsSchema?.parse(req.params);
+            const body = (bodySchema?.parse(req.body) ?? undefined) as Body extends ZodType ? output<Body> : undefined;
+            const params = (paramsSchema?.parse(req.params) ?? undefined) as Params extends ZodType ? output<Params> : undefined;
 
             await controller({ body, params, request: req }, res);
         } catch (error) {

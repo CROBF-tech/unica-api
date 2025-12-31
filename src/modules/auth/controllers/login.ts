@@ -11,10 +11,9 @@ const body = z.object({
 
 const params = z.object({}).optional();
 
+export const login = makeController<typeof body, typeof params>(async function ({ body, params, request }, res) {
 
-export const login = makeController<typeof body, typeof params>(async function ({ body }, res) {
-
-    const { username, password } = body!;
+    const { username, password } = body;
 
     const { password: _, ...user } = await Login({ username, password });
 
