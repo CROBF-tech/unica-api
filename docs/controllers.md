@@ -10,6 +10,7 @@ La función `makeController` es una utilidad que simplifica la creación de cont
 - ✅ Tipado fuerte de TypeScript
 - ✅ Manejo centralizado de errores
 - ✅ Respuestas de error consistentes
+- ✅ Autorización integrada con JWT
 
 ---
 
@@ -27,17 +28,19 @@ src/shared/utils/makeController.ts
 makeController<Body, Params>(
     controller: (req, res) => Promise<void>,
     bodySchema?: Body,
-    paramsSchema?: Params
+    paramsSchema?: Params,
+    config?: { authorization?: boolean | ((token: string) => boolean) }
 ): Handler
 ```
 
 ### Parámetros
 
-| Parámetro      | Tipo       | Requerido | Descripción                          |
-| -------------- | ---------- | --------- | ------------------------------------ |
-| `controller`   | `Function` | ✅        | Función async con la lógica          |
-| `bodySchema`   | `ZodType`  | No        | Schema Zod para validar `req.body`   |
-| `paramsSchema` | `ZodType`  | No        | Schema Zod para validar `req.params` |
+| Parámetro      | Tipo       | Requerido | Descripción                                |
+| -------------- | ---------- | --------- | ------------------------------------------ |
+| `controller`   | `Function` | ✅        | Función async con la lógica                |
+| `bodySchema`   | `ZodType`  | No        | Schema Zod para validar `req.body`         |
+| `paramsSchema` | `ZodType`  | No        | Schema Zod para validar `req.params`       |
+| `config`       | `Object`   | No        | Configuración adicional (ver Autorización) |
 
 ### Objeto `req` del Controller
 
@@ -49,21 +52,106 @@ makeController<Body, Params>(
 
 ---
 
+## Autorización
+
+El parámetro `config.authorization` permite proteger endpoints de forma sencilla.
+
+### Opciones
+
+| Valor                        | Comportamiento                                    |
+| ---------------------------- | ------------------------------------------------- |
+| `true`                       | Requiere que exista el header `Authorization`     |
+| `(token: string) => boolean` | Ejecuta la función para validar el token y el rol |
+| `undefined` / no se pasa     | Sin autorización (endpoint público)               |
+
+### Funciones de Utilidad para Roles
+
+Ubicación: `src/modules/auth/utils/auth.ts`
+
+```typescript
+import {
+  getRole,
+  isCashier,
+  isAdmin,
+  hasAnyRole,
+} from '@/modules/auth/utils/auth';
+
+// Obtener el rol del token (retorna string o false)
+getRole(token); // "admin" | "cashier" | false
+
+// Verificar roles específicos
+isAdmin(token); // true si rol es "admin"
+isCashier(token); // true si rol es "cashier"
+hasAnyRole(token); // true si tiene cualquier rol válido
+```
+
+### Ejemplos de Autorización
+
+```typescript
+// ❌ Sin autorización (público)
+export const publicEndpoint = makeController(async ({ body }, res) => {
+  // ...
+}, body);
+
+// ✅ Requiere token (cualquier usuario autenticado)
+export const protectedEndpoint = makeController(
+  async ({ body }, res) => {
+    // ...
+  },
+  body,
+  params,
+  { authorization: true },
+);
+
+// ✅ Solo administradores
+export const adminOnly = makeController(
+  async ({ body }, res) => {
+    // ...
+  },
+  body,
+  params,
+  { authorization: isAdmin },
+);
+
+// ✅ Solo cajeros
+export const cashierOnly = makeController(
+  async ({ body }, res) => {
+    // ...
+  },
+  body,
+  params,
+  { authorization: isCashier },
+);
+
+// ✅ Cualquier rol válido
+export const anyRole = makeController(
+  async ({ body }, res) => {
+    // ...
+  },
+  body,
+  params,
+  { authorization: hasAnyRole },
+);
+```
+
+---
+
 ## Manejo de Errores
 
 `makeController` captura automáticamente:
 
-| Tipo de Error   | Código HTTP | Comportamiento                                   |
-| --------------- | ----------- | ------------------------------------------------ |
-| `ZodError`      | 400         | Devuelve mensaje y path del campo con error      |
-| `ErrorResponse` | Dinámico    | Usa el código definido en el error personalizado |
-| Otros errores   | -           | Se pasan al middleware `next(error)`             |
+| Tipo de Error        | Código HTTP | Comportamiento                                   |
+| -------------------- | ----------- | ------------------------------------------------ |
+| `ZodError`           | 400         | Devuelve mensaje y path del campo con error      |
+| `ErrorResponse`      | Dinámico    | Usa el código definido en el error personalizado |
+| `InvalidCredentials` | 401         | Token inválido o faltante                        |
+| Otros errores        | -           | Se pasan al middleware `next(error)`             |
 
 ---
 
 ## Ejemplos
 
-### Ejemplo Básico: Login
+### Ejemplo Básico: Login (Público)
 
 ```typescript
 import { env } from '@/config/env';
@@ -72,7 +160,6 @@ import { Login } from '@/modules/auth/actions/Login';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 
-// 1. Definir schemas de validación
 const body = z.object({
   username: z
     .string()
@@ -83,10 +170,9 @@ const body = z.object({
 
 const params = z.object({}).optional();
 
-// 2. Crear el controlador con tipos inferidos
 export const login = makeController<typeof body, typeof params>(
-  async function ({ body, params, request }, res) {
-    const { username, password } = body; // ✅ Tipado automático
+  async function ({ body }, res) {
+    const { username, password } = body;
 
     const { password: _, ...user } = await Login({ username, password });
 
@@ -99,16 +185,18 @@ export const login = makeController<typeof body, typeof params>(
       role: user.role,
     });
   },
-  body, // Schema del body
-  params, // Schema de params
+  body,
+  params,
+  // Sin config = endpoint público
 );
 ```
 
-### Ejemplo con Params: Obtener Producto por ID
+### Ejemplo Protegido: Obtener Producto (Cualquier Usuario)
 
 ```typescript
 import { makeController } from '@/shared/utils/makeController';
 import { findProductById } from '@/db';
+import { hasAnyRole } from '@/modules/auth/utils/auth';
 import { z } from 'zod';
 
 const body = z.object({}).optional();
@@ -119,7 +207,7 @@ const params = z.object({
 
 export const getProduct = makeController<typeof body, typeof params>(
   async function ({ params }, res) {
-    const product = await findProductById(params.id);
+    const product = await findProductById(params!.id);
 
     if (!product) {
       res.status(404).json({ message: 'Producto no encontrado' });
@@ -130,14 +218,16 @@ export const getProduct = makeController<typeof body, typeof params>(
   },
   body,
   params,
+  { authorization: hasAnyRole },
 );
 ```
 
-### Ejemplo Solo con Body: Crear Producto
+### Ejemplo Admin: Crear Producto
 
 ```typescript
 import { makeController } from '@/shared/utils/makeController';
 import { createProduct } from '@/db';
+import { isAdmin } from '@/modules/auth/utils/auth';
 import { z } from 'zod';
 
 const body = z.object({
@@ -149,21 +239,23 @@ const body = z.object({
   stock: z.number().int().min(0),
 });
 
-export const create = makeController<typeof body>(async function (
-  { body },
-  res,
-) {
-  const product = await createProduct({
-    ...body,
-    metadata: '{}',
-    createdAt: new Date().toLocaleDateString('es-AR'),
-  });
+export const create = makeController<typeof body>(
+  async function ({ body }, res) {
+    const product = await createProduct({
+      ...body,
+      metadata: '{}',
+      createdAt: new Date().toLocaleDateString('es-AR'),
+    });
 
-  res.status(201).json({
-    status: 'success',
-    data: product,
-  });
-}, body);
+    res.status(201).json({
+      status: 'success',
+      data: product,
+    });
+  },
+  body,
+  undefined,
+  { authorization: isAdmin },
+);
 ```
 
 ---
@@ -174,11 +266,18 @@ export const create = makeController<typeof body>(async function (
 import { Router } from 'express';
 import { login } from './controllers/login';
 import { getProduct } from './controllers/getProduct';
+import { create } from './controllers/create';
 
 const router = Router();
 
+// Público
 router.post('/login', login);
+
+// Protegido (cualquier rol)
 router.get('/products/:id', getProduct);
+
+// Solo admin
+router.post('/products', create);
 
 export default router;
 ```

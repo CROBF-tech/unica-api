@@ -9,21 +9,18 @@ const body = z.object({
     password: z.string().nonempty().max(100)
 });
 
-const params = z.object({}).optional();
-
-export const login = makeController<typeof body, typeof params>(async function ({ body, params, request }, res) {
+export const login = makeController<typeof body>(async function ({ body, request }, res) {
 
     const { username, password } = body;
 
     const { password: _, ...user } = await Login({ username, password });
 
-    const token = jwt.sign({ ...user }, env.JWT_SECRET, { expiresIn: "2DAY" });
+    const token = jwt.sign({ ...user }, env.JWT_SECRET, { expiresIn: "2DAYS" });
 
     res.status(200).json({
         status: "success",
         messages: "Credenciales correctas.",
         token,
-        role: user.role
     });
 
-}, body, params);
+}, body);
